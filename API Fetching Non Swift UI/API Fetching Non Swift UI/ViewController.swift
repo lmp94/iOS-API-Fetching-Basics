@@ -23,23 +23,40 @@ class ViewController: UIViewController {
         label = createLabel()
         button = createButton()
         
-        self.view.addSubview(button)
         self.view.addSubview(label)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        
+        let labelXTop = NSLayoutConstraint(item: label, attribute: .top, relatedBy: .greaterThanOrEqual, toItem: view, attribute: .top, multiplier: 1.0, constant: 0.0)
+        let labelYTop = NSLayoutConstraint(item: label, attribute: .top, relatedBy: .greaterThanOrEqual, toItem: view, attribute: .top, multiplier: 1.0, constant: 0.0)
+        NSLayoutConstraint.activate([labelXTop, labelYTop])
+        label.widthAnchor.constraint(equalTo: view.widthAnchor).isActive = true
+        label.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20).isActive = true
+
+        self.view.addSubview(button)
+        button.translatesAutoresizingMaskIntoConstraints = false
+
+        button.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20).isActive = true
+        button.widthAnchor.constraint(equalTo: view.widthAnchor, constant: -100).isActive = true
+        button.centerXAnchor.constraint(equalToSystemSpacingAfter: view.centerXAnchor, multiplier: 0).isActive = true
     }
     
     func createLabel() -> UILabel {
-        let label = UILabel(frame: CGRect(x: 0, y: 0, width: 200, height: 21))
+        let label = UILabel()
         label.center = CGPoint(x: 160, y: 285)
         label.textAlignment = .center
         label.text = "Hello World"
+        label.numberOfLines = 40
         return label
     }
     
+    // Don: You should try to use constraints
+    
     func createButton() -> UIButton {
-        let button = UIButton(frame: CGRect(x: 100, y: 100, width: 100, height: 50))
-        button.backgroundColor = .green
+        let button = UIButton()
+        button.backgroundColor = .gray
         button.setTitle("IACO", for: .normal)
         button.addTarget(self, action: #selector(buttonPressed), for: .touchUpInside)
+        button.titleLabel?.textAlignment = .center
         return button
     }
     

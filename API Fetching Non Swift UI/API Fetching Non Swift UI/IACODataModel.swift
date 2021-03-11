@@ -120,10 +120,8 @@ class IACODataModel {
         // Check to see if the data is already loaded, if it is, pass back the previously saved entry
         // Note: This should really be done in a manager class or some class that will persist between sessions
         // and is invoked in bootstrap
-        if let list: [DataSubsetContainer] = dataSummary?.list {
-            let iacoMap: [String] = list.map { $0.singleLine }
-            let aggregatedList: String = iacoMap.joined(separator: ",")
-            completion(aggregatedList)
+        if dataSummary != nil {
+            completion(dataSummaryToString())
         }
         else {
             loadJSONData(getAPIRequest(icao)) { data in
@@ -150,7 +148,7 @@ extension IACODataModel {
         }
         
         let iacoMap: [String] = list.map { $0.singleLine }
-        let aggregatedLine = iacoMap.joined(separator: ",")
+        let aggregatedLine = iacoMap.joined(separator: "\n\n\n")
         return aggregatedLine
         
         /* This can actually be turned into simply a single line.
