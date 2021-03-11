@@ -73,35 +73,71 @@ class IACODataModel {
     
     // MARK: - Codable Structs for JSON Mapping
     
-    /*
-     The swift values of String, Int, Double, URL, Date, Data, Array and Dictionary
-     values can be encoded as a JSON and also decoded from a JSON into a struct.
-     
+    /**
+     We can use Codable to map a JSON data into a struct without much work if we keep to the supported types:
+     String, Int, Double, URL, Date, Data, Array and Dictionary.
+     As long as the variable name maps to the json key we don't have to do a custom mapping.*/
+    
+    
+    /**
      Our data is a key, value pair of "data": [{"iaco": {}, "raw_text": {}}...]
-     Therefore, we need to decode "data", and then individual JSONs.n */
+     Therefore, we need to get the data as an array of subelements, those sub-elments
+     can have any of the properties mentioned above.
+     
+     Cheat sheet:
+     - If its contained by {} it is a Dictionary [String: String],
+     - If it is contained by [] then you can use an Array of a new codable object, or another type listed above i.e. [String]
+     - If its is simply "text": "..." then this is mapped to just a simple variable of one of the simplier types
+     */
     
     struct DataSetContainer: Codable {
         var data: [DataSubsetContainer] // "data: [{}]"
     }
     
+   
     /**
-     We can use Codable to map a JSON data into a struct without much work if we keep to the supported types:
-     String, Int, Double, URL, Date, Data, Array and Dictionary.
-     As long as the variable name maps to the json key -
+     This data dabutset
      i.e. in the JSON this - "icao": "KLGA" >> var iaco: String in the Codabe struct
+     
+     Covered properties at the moment intime {"iaco": "", "raw_text": "", "clouds": [{...}]}
      */
-    struct DataSubsetContainer: Codable { // {"iaco": {}, "raw_text": {}}
-        var icao: String
-        var singleLine: String
+    struct DataSubsetContainer: Codable {
+        var icao: String // "iaco": ""
+        var singleLine: String // "raw_text": ""
+        var clouds: [CloudDataSet] // "clouds": [{ "code": "CLR", "text": "Clear skies"}]
         
         enum CustomMapping: String, CodingKey {
-            case icao, singleLine = "raw_text"
+            case icao, singleLine = "raw_text", clouds
         }
         
+        // Init is only needed if you want or need a customer mapping
         init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CustomMapping.self)
             icao = try container.decode(String.self, forKey: .icao)
             singleLine = try container.decode(String.self, forKey: .singleLine)
+            clouds = try container.decode([CloudDataSet].self, forKey: .clouds)
+        }
+    }
+    
+    
+    /** We can still map things that are in a sub **array** within the json as shown below.
+        Note that we have to in the decoder above (if we need a customer
+     
+        Example: "clouds": [{"code": "CLR", "text": "Clear skies"}]
+        Some other from the data set that this sort of setup would be applicable to are: coordinates
+     */
+    struct CloudDataSet: Codable {
+        var code: String
+        var description: String
+        
+        enum CustomMapping: String, CodingKey {
+            case code, description = "text"
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CustomMapping.self)
+            code = try container.decode(String.self, forKey: .code)
+            description = try container.decode(String.self, forKey: .description)
         }
     }
     
