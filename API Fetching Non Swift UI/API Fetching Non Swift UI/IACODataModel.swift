@@ -76,8 +76,10 @@ class IACODataModel {
     /**
      We can use Codable to map a JSON data into a struct without much work if we keep to the supported types:
      String, Int, Double, URL, Date, Data, Array and Dictionary.
-     As long as the variable name maps to the json key we don't have to do a custom mapping.*/
-    
+     As long as the variable name maps to the json key we don't have to do a custom mapping.
+     
+     This write up is not created as a testiment to my developer knowledge, but made for students to use, play around with, and learn. It is by no means the cleanest or most efficient, opmitized on the ability to students to find patterns to solidfy concepts.
+     */
     
     /**
      Our data is a key, value pair of "data": [{"iaco": {}, "raw_text": {}}...]
@@ -93,31 +95,42 @@ class IACODataModel {
     struct DataSetContainer: Codable {
         var data: [DataSubsetContainer] // "data: [{}]"
     }
-    
    
     /**
-     This data dabutset
+     This data subset
      i.e. in the JSON this - "icao": "KLGA" >> var iaco: String in the Codabe struct
      
      Covered properties at the moment intime {"iaco": "", "raw_text": "", "clouds": [{...}]}
      */
     struct DataSubsetContainer: Codable {
         var icao: String // "iaco": ""
-        var singleLine: String // "raw_text": ""
         var clouds: [CloudDataSet] // "clouds": [{ "code": "CLR", "text": "Clear skies"}]
+        var stationName: String // "station": {"name": "La Guardia Airport"}
         
-        enum CustomMapping: String, CodingKey {
-            case icao, singleLine = "raw_text", clouds
+        // Custom mapping needed
+        var singleLine: String // "raw_text": ""
+
+        enum CustomCodingKeys: String, CodingKey {
+            case icao, clouds, station, singleLine = "raw_text"
         }
         
-        // Init is only needed if you want or need a customer mapping
+        enum StationCodingKeys: String, CodingKey {
+            case name
+        }
+        
+        // Init is only necessary if you want or need a custome mapping or complex mappings
         init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: CustomMapping.self)
+            let container = try decoder.container(keyedBy: CustomCodingKeys.self)
             icao = try container.decode(String.self, forKey: .icao)
-            singleLine = try container.decode(String.self, forKey: .singleLine)
             clouds = try container.decode([CloudDataSet].self, forKey: .clouds)
+            singleLine = try container.decode(String.self, forKey: .singleLine)
+
+            let stationContaniter = try container.nestedContainer(keyedBy: StationCodingKeys.self, forKey: .station)
+            stationName = try stationContaniter.decode(String.self, forKey: .name)
         }
     }
+    
+   
     
     
     /** We can still map things that are in a sub **array** within the json as shown below.
@@ -156,10 +169,10 @@ class IACODataModel {
         // Check to see if the data is already loaded, if it is, pass back the previously saved entry
         // Note: This should really be done in a manager class or some class that will persist between sessions
         // and is invoked in bootstrap
-        if dataSummary != nil {
-            completion(dataSummaryToString())
-        }
-        else {
+//        if dataSummary != nil {
+//            completion(dataSummaryToString())
+//        }
+//        else {
             loadJSONData(getAPIRequest(icao)) { data in
                 guard let requestedData = data else {
                     completion(nil)
@@ -169,7 +182,7 @@ class IACODataModel {
                 completion(requestedData)
                 return
             }
-        }
+     //   } For right now: As you debug and learn, I am turing off the "save" feature
     }
     
 }
@@ -191,12 +204,33 @@ extension IACODataModel {
          But I have variables for you to see the different parts and be able to
          debug to deermine what each step is doing and what that looks like. */
         // return list.map { $0.singleLine }.joined(separator: ",")
+    }
+    
+    private func getFullData() -> String {
+        guard let list = dataSummary?.list else {
+            print("list is DNE")
+            return ""
+        }
         
+        var returnString = String()
+        for airport in list {
+            returnString.append(printAirportData(airport))
+        }
+        
+        return returnString
+    }
+    
+    private func printAirportData(_ subset: DataSubsetContainer) -> String {
+        var stringToPrint = String()
+        stringToPrint.append("----\(subset.stationName)-----\n")
+        stringToPrint.append("\(subset.icao): \(subset.singleLine) \n")
+        stringToPrint.append(" Weather: \(subset.clouds[0].code), \(subset.clouds[0].description)\n\n")
+        return stringToPrint
     }
     
     private func getAPIRequest(_ iacos: String) -> URLRequest? {
         let urlString = "https://api.checkwx.com/metar/" + iacos + "/decoded/"
-        print("URL String: \(urlString)")
+        // print("URL String: \(urlString)")
         
         // Better way to write it, however, this lets us print out the end point for learning purposes
         //  guard let endpoint = URL("https://api.checkwx.com/metar/" + iacos + "/decoded/") else
@@ -235,11 +269,15 @@ extension IACODataModel {
             }
             do {
                 let dataArray = try JSONDecoder().decode(DataSetContainer.self, from: taskData)
-                print("We have decoded a data array with count: \(dataArray.data.count)")
+                
+                // print("We have decoded a data array with count: \(dataArray.data.count)")
+                
                 strongSelf.dataSummary = IACODataSummary(query: request.description, list: dataArray.data)
-                let string = strongSelf.dataSummaryToString()
-                print("String we are passing back to the front end: \(string)")
-                completion(string) // Same thing here, these variables are not truly needed, but created for learning and exploration.
+                
+                // let string = strongSelf.dataSummaryToString() - This will aggregate the IACO raw text into a string
+                //print("String we are passing back to the front end: \(string)")
+                
+                completion(strongSelf.getFullData()) // Same thing here, these variables are not truly needed, but created for learning and exploration.
                 
             } catch {
                 print("Error: decoded json")
